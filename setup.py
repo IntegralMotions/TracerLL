@@ -21,6 +21,7 @@ with open("version.h", "w") as f:
 module = Extension(
     "TracerLL",
     sources=["tracerll_module.cpp", "seven_bit_encoding.cpp"],
+    include_dirs=["."],
     language="c++",
 )
 
