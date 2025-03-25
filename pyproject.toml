@@ -4,20 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TracerLL"
-version = "0.1.14"
-description = "TracerLL: High-performance embedded tracing library"
+version = "0.1.13"
+description = "TracerLL: High-performance motor control library"
 authors = [{ name = "William Kers and Jos Wigchert", email = "your@email.com" }]
 license = { file = "LICENSE" }
 readme = "README.md"
 dependencies = []
 requires-python = ">=3.6"
-
-[tool.setuptools]
-packages = []
-include-package-data = false
-
-[tool.setuptools.ext_modules]
-TracerLL = { sources = [
-    "tracerll_module.cpp",
-    "seven_bit_encoding.cpp",
-], language = "c++" }
