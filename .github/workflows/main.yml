@@ -53,6 +53,15 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install build twine cibuildwheel
+      # - uses: actions/checkout@v3
+      # - name: Set up Python
+      #   uses: actions/setup-python@v4
+      #   with:
+      #     python-version: "3.13"
+      # - name: Install build tools
+      #   run: |
+      #     pip install --upgrade pip
+      #     pip install build twine cibuildwheel
       - name: Build Wheel for Windows
         run: |
           python -m cibuildwheel --platform windows --output-dir dist
