@@ -6,43 +6,43 @@ on:
       - main
 
 jobs:
-  build-linux:
-    name: Build Linux Wheel
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.13"
-      - name: Install build tools
-        run: |
-          pip install --upgrade pip
-          pip install build twine cibuildwheel
-      - name: Build Wheel for Linux
-        run: |
-          python -m cibuildwheel --platform linux --output-dir dist
+  # build-linux:
+  #   name: Build Linux Wheel
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.13"
+  #     - name: Install build tools
+  #       run: |
+  #         pip install --upgrade pip
+  #         pip install build twine cibuildwheel
+  #     - name: Build Wheel for Linux
+  #       run: |
+  #         python -m cibuildwheel --platform linux --output-dir dist
 
-  build-macos:
-    name: Build macOS Wheel
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.13"
-      - name: Install build tools
-        run: |
-          pip install --upgrade pip
-          pip install build twine cibuildwheel
-      - name: Build Wheel for macOS
-        run: |
-          python -m cibuildwheel --platform macos --output-dir dist
+  # build-macos:
+  #   name: Build macOS Wheel
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.13"
+  #     - name: Install build tools
+  #       run: |
+  #         pip install --upgrade pip
+  #         pip install build twine cibuildwheel
+  #     - name: Build Wheel for macOS
+  #       run: |
+  #         python -m cibuildwheel --platform macos --output-dir dist
 
   build-windows:
     name: Build Windows Wheel
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python
@@ -60,7 +60,7 @@ jobs:
   publish:
     name: Publish Package
     runs-on: ubuntu-latest
-    needs: [build-linux, build-macos, build-windows] # This ensures publishing happens only after builds finish
+    needs: [build-windows] # This ensures publishing happens only after builds finish
     steps:
       - uses: actions/checkout@v3
       - name: Install Twine
