@@ -5,80 +5,46 @@ on:
     branches:
       - main
 
+
 jobs:
-  build-linux:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install build twine cibuildwheel
-      - run: python -m cibuildwheel --platform linux --output-dir dist
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: linux-wheels
-          path: dist/*
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install build twine cibuildwheel
-      - run: python -m cibuildwheel --platform windows --output-dir dist
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: windows-wheels
-          path: dist/*
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-      - run: |
-          pip install --upgrade pip
-          pip install build twine cibuildwheel
-      - run: python -m cibuildwheel --platform macos --output-dir dist
-      - name: Upload wheels
-        uses: actions/upload-artifact@v3
-        with:
-          name: macos-wheels
-          path: dist/*
-
-  publish:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: pip
+        cache-dependency-path: '**/pyproject.toml'
+    - name: Install dependencies
+      run: |
+        pip install -e '.[test]'
+    - name: Run tests
+      run: |
+        pytest
+  deploy:
     runs-on: ubuntu-latest
-    needs: [build-linux, build-windows, build-macos]
+    needs: [test]
+    environment: release
+    permissions:
+      id-token: write
     steps:
-      - name: Download linux wheels
-        uses: actions/download-artifact@v3
-        with:
-          name: linux-wheels
-      - name: Download windows wheels
-        uses: actions/download-artifact@v3
-        with:
-          name: windows-wheels
-      - name: Download macos wheels
-        uses: actions/download-artifact@v3
-        with:
-          name: macos-wheels
-      - name: List files
-        run: ls -lR
-      - name: Install Twine
-        run: pip install twine
-      - name: Publish package
-        run: twine upload **/*.whl **/*.tar.gz
-        env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: '**/pyproject.toml'
+    - name: Install dependencies
+      run: |
+        pip install setuptools wheel build
+    - name: Build
+      run: |
+        python -m build
+    - name: Publish
+      uses: pypa/gh-action-pypi-publish@release/v1
