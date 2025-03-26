@@ -16,5 +16,8 @@ namespace SevenBitEncoding
     size_t decodeBuffer(const uint8_t *inputBuffer, const size_t inputLength,
                         uint8_t *outputBuffer, const size_t outputLength);
 
-    inline uint8_t leftMask(uint8_t n);
+    inline uint8_t leftMask(uint8_t n)
+    {
+        return static_cast<uint8_t>((1 << (n)) - 1);
+    }
 }
