@@ -19,10 +19,11 @@ jobs:
       - name: Install build tools
         run: |
           pip install --upgrade pip
-          pip install build twine
+          pip install build twine cibuildwheel
 
-      - name: Build package
-        run: python -m build --wheel
+      - name: Build wheels
+        run: |
+          python -m cibuildwheel --output-dir dist
 
       - name: Publish package
         run: twine upload dist/*
