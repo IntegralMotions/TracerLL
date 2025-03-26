@@ -6,8 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "TracerLL"
 version = "0.1.13"
 description = "TracerLL: High-performance motor control library"
-authors = [{ name = "William Kers and Jos Wigchert", email = "your@email.com" }]
-license = { file = "LICENSE" }
+authors = [
+    { name = "William Kers", email = "williamkers@integralmotions.com" },
+    { name = "Jos Wigchert", email = "joswigchert@integralmotions.com" },
+]
 readme = "README.md"
 dependencies = []
 requires-python = ">=3.6"
+license = "MIT"
+license-files = ["LICENSE"]
