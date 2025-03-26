@@ -8,47 +8,83 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    outputs:
+      artifact: ${{ steps.upload.outputs.artifact }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: ">=3.11"
+          python-version: "3.11"
       - run: |
           pip install --upgrade pip
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform linux --output-dir dist
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-wheels
+          path: dist/*
 
   build-windows:
     runs-on: windows-latest
+    outputs:
+      artifact: ${{ steps.upload.outputs.artifact }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: ">=3.11"
+          python-version: "3.11"
       - run: |
           pip install --upgrade pip
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform windows --output-dir dist
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-wheels
+          path: dist/*
 
   build-macos:
     runs-on: macos-latest
+    outputs:
+      artifact: ${{ steps.upload.outputs.artifact }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
-          python-version: ">=3.11"
+          python-version: "3.11"
       - run: |
           pip install --upgrade pip
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform macos --output-dir dist
+      - name: Upload wheels
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-wheels
+          path: dist/*
 
   publish:
     runs-on: ubuntu-latest
     needs: [build-linux, build-windows, build-macos]
     steps:
-      - uses: actions/checkout@v3
-      - run: pip install twine
-      - run: twine upload dist/*
+      - name: Download linux wheels
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-wheels
+      - name: Download windows wheels
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-wheels
+      - name: Download macos wheels
+        uses: actions/download-artifact@v3
+        with:
+          name: macos-wheels
+      - name: List files
+        run: ls -l
+      - name: Install Twine
+        run: pip install twine
+      - name: Publish package
+        run: twine upload **/*.whl **/*.tar.gz
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
