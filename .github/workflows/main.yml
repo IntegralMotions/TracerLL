@@ -8,8 +8,6 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-    outputs:
-      artifact: ${{ steps.upload.outputs.artifact }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -20,15 +18,13 @@ jobs:
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform linux --output-dir dist
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: linux-wheels
           path: dist/*
 
   build-windows:
     runs-on: windows-latest
-    outputs:
-      artifact: ${{ steps.upload.outputs.artifact }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -39,15 +35,13 @@ jobs:
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform windows --output-dir dist
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: windows-wheels
           path: dist/*
 
   build-macos:
     runs-on: macos-latest
-    outputs:
-      artifact: ${{ steps.upload.outputs.artifact }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -58,7 +52,7 @@ jobs:
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform macos --output-dir dist
       - name: Upload wheels
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: macos-wheels
           path: dist/*
