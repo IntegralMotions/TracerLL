@@ -38,7 +38,7 @@ jobs:
           pip install build twine cibuildwheel
       - name: Build Wheel for macOS
         run: |
-          python -m cibuildwheel --platform macosx --output-dir dist
+          python -m cibuildwheel --platform macos --output-dir dist
 
   build-windows:
     name: Build Windows Wheel
@@ -55,7 +55,7 @@ jobs:
           pip install build twine cibuildwheel
       - name: Build Wheel for Windows
         run: |
-          python -m cibuildwheel --platform win --output-dir dist
+          python -m cibuildwheel --platform windows --output-dir dist
 
   publish:
     name: Publish Package
