@@ -1,4 +1,4 @@
-name: Build and Publish Wheels for Multiple OS
+name: Build and Publish Wheels
 
 on:
   push:
@@ -6,77 +6,42 @@ on:
       - main
 
 jobs:
-  # build-linux:
-  #   name: Build Linux Wheel
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.13"
-  #     - name: Install build tools
-  #       run: |
-  #         pip install --upgrade pip
-  #         pip install build twine cibuildwheel
-  #     - name: Build Wheel for Linux
-  #       run: |
-  #         python -m cibuildwheel --platform linux --output-dir dist
-
-  # build-macos:
-  #   name: Build macOS Wheel
-  #   runs-on: macos-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: "3.13"
-  #     - name: Install build tools
-  #       run: |
-  #         pip install --upgrade pip
-  #         pip install build twine cibuildwheel
-  #     - name: Build Wheel for macOS
-  #       run: |
-  #         python -m cibuildwheel --platform macos --output-dir dist
-
-  build-windows:
-    name: Build Windows Wheel
+  build-linux-windows:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platform: [linux, windows]
+    env:
+      CIBW_PLATFORM: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.13"
-      - name: Install build tools
-        run: |
+      - run: |
           pip install --upgrade pip
           pip install build twine cibuildwheel
-      # - uses: actions/checkout@v3
-      # - name: Set up Python
-      #   uses: actions/setup-python@v4
-      #   with:
-      #     python-version: "3.13"
-      # - name: Install build tools
-      #   run: |
-      #     pip install --upgrade pip
-      #     pip install build twine cibuildwheel
-      - name: Build Wheel for Windows
-        run: |
-          python -m cibuildwheel --platform windows --output-dir dist
+      - run: python -m cibuildwheel --output-dir dist
 
-  publish:
-    name: Publish Package
-    runs-on: ubuntu-latest
-    needs: [build-windows] # This ensures publishing happens only after builds finish
+  build-macos:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install Twine
-        run: pip install twine
-      - name: Publish package
-        run: |
-          twine upload dist/*
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
+      - run: |
+          pip install --upgrade pip
+          pip install build twine cibuildwheel
+      - run: python -m cibuildwheel --platform macos --output-dir dist
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build-linux-windows, build-macos]
+    steps:
+      - uses: actions/checkout@v3
+      - run: pip install twine
+      - run: twine upload dist/*
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
