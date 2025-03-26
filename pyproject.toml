@@ -17,3 +17,7 @@ requires-python = ">=3.8"
 [project.license]
 text = "MIT"
 files = ["LICENSE"]
+
+[tool.cibuildwheel]
+skip = "cp36-* cp37-*"
+archs = "auto"
