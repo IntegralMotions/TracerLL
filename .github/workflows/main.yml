@@ -18,7 +18,7 @@ jobs:
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform linux --output-dir dist
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: linux-wheels
           path: dist/*
@@ -35,7 +35,7 @@ jobs:
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform windows --output-dir dist
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: windows-wheels
           path: dist/*
@@ -52,7 +52,7 @@ jobs:
           pip install build twine cibuildwheel
       - run: python -m cibuildwheel --platform macos --output-dir dist
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: macos-wheels
           path: dist/*
@@ -74,7 +74,7 @@ jobs:
         with:
           name: macos-wheels
       - name: List files
-        run: ls -l
+        run: ls -lR
       - name: Install Twine
         run: pip install twine
       - name: Publish package
