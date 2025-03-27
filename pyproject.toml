@@ -12,12 +12,12 @@ authors = [
 ]
 readme = "README.md"
 dependencies = []
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 
 [project.license]
 text = "MIT"
 files = ["LICENSE"]
 
 [tool.cibuildwheel]
-skip = "cp36-* cp37-*"
+skip = "cp36-* cp37-* cp38-* pp36-* pp37-* pp38-*"
 archs = "auto"
