@@ -61,13 +61,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -U setuptools wheel build cibuildwheel
+          pip install -U twine setuptools wheel build cibuildwheel
 
       - name: Build Wheels
         run: |
           python -m cibuildwheel --output-dir dist
 
       - name: Publish Wheels
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          packages_dir: dist
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          twine upload dist/*
