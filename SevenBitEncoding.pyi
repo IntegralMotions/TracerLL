@@ -50,6 +50,13 @@ def decode_buffer(input: bytes, output_length: int) -> bytes:
     """
     ...
 
+def is_last_byte(byte: int) -> bool:
+    """
+    is_last_byte(byte: int) -> bool
+
+    Return whether or not this byte is the last byte of a 7-bit encoded value.
+    """
+
 def left_mask(n: int) -> int:
     """
     left_mask(n: int) -> int
