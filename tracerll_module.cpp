@@ -74,6 +74,15 @@ static PyObject *py_decode_buffer(PyObject *, PyObject *args)
     return result;
 }
 
+static PyObject *py_ist_last_byte(PyObject *, PyObject *args)
+{
+    unsigned int byte;
+    if (!PyArg_ParseTuple(args, "I", &byte))
+        return NULL;
+    bool result = SevenBitEncoding::isLastByte(static_cast<uint8_t>(byte));
+    return result ? Py_True : Py_False;
+}
+
 static PyObject *py_left_mask(PyObject *, PyObject *args)
 {
     unsigned int n;

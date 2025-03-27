@@ -4,19 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TracerLL"
-version = "0.1.15"
+version = "0.2.0"
 description = "TracerLL: High-performance embedded variable tracing library"
 authors = [
     { name = "Jos Wigchert", email = "joswigchert@integralmotions.com" },
     { name = "William Kers", email = "williamkers@integralmotions.com" },
 ]
 readme = "README.md"
+license = "MIT"
 dependencies = []
 requires-python = ">=3.9"
-
-[project.license]
-text = "MIT"
-files = ["LICENSE"]
 
 [tool.cibuildwheel]
 skip = "cp36-* cp37-* cp38-* pp*"

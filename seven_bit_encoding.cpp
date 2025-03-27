@@ -119,4 +119,9 @@ namespace SevenBitEncoding
         }
         return decoded;
     }
+
+    bool isLastByte(const uint8_t byte)
+    {
+        return byte & 0x80 == 0;
+    }
 }
