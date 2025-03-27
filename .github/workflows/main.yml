@@ -69,7 +69,6 @@ jobs:
 
       - name: Publish Wheels
         env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_REPOSITORY: pypi
         run: |
           twine upload dist/*

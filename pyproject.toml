@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "TracerLL"
-version = "0.1.14"
+version = "0.1.15"
 description = "TracerLL: High-performance embedded variable tracing library"
 authors = [
-    { name = "William Kers", email = "williamkers@integralmotions.com" },
     { name = "Jos Wigchert", email = "joswigchert@integralmotions.com" },
+    { name = "William Kers", email = "williamkers@integralmotions.com" },
 ]
 readme = "README.md"
 dependencies = []
