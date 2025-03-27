@@ -122,6 +122,6 @@ namespace SevenBitEncoding
 
     bool isLastByte(const uint8_t byte)
     {
-        return byte & 0x80 == 0;
+        return (byte & 0x80) == 0;
     }
 }
