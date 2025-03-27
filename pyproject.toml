@@ -19,5 +19,5 @@ text = "MIT"
 files = ["LICENSE"]
 
 [tool.cibuildwheel]
-skip = "cp36-* cp37-* cp38-* pp36-* pp37-* pp38-*"
+skip = "cp36-* cp37-* cp38-* pp*"
 archs = "auto"
