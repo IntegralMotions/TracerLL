@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: '**/pyproject.toml'
+          cache-dependency-path: "**/pyproject.toml"
       - name: Install dependencies
         run: |
           pip install -U pytest
@@ -57,7 +57,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: '**/pyproject.toml'
+          cache-dependency-path: "**/pyproject.toml"
 
       - name: Install dependencies
         run: |
