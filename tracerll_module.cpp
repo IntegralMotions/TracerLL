@@ -74,7 +74,7 @@ static PyObject *py_decode_buffer(PyObject *, PyObject *args)
     return result;
 }
 
-static PyObject *py_ist_last_byte(PyObject *, PyObject *args)
+static PyObject *py_is_last_byte(PyObject *, PyObject *args)
 {
     unsigned int byte;
     if (!PyArg_ParseTuple(args, "I", &byte))
@@ -99,6 +99,7 @@ static PyMethodDef SevenBitEncodingMethods[] = {
     {"get_encoded_buffer_size", py_get_encoded_buffer_size, METH_VARARGS, "Return the encoded buffer size for a given input size."},
     {"encode_buffer", py_encode_buffer, METH_VARARGS, "Encode a buffer using 7-bit encoding."},
     {"decode_buffer", py_decode_buffer, METH_VARARGS, "Decode a 7-bit encoded buffer."},
+    {"is_last_byte", py_is_last_byte, METH_VARARGS, "Return whether or not the given byte is the last byte of a 7-bit encoded value."},
     {"left_mask", py_left_mask, METH_VARARGS, "Compute a left mask for n bits."},
     {NULL, NULL, 0, NULL}};
 
