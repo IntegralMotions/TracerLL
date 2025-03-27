@@ -37,17 +37,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system dependencies (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt update
-          sudo apt install -y build-essential gcc-multilib g++-multilib libc6-dev
-
-      - name: Install system dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install llvm
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -57,7 +46,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -U twine setuptools wheel build cibuildwheel
+          pip install -U setuptools wheel build cibuildwheel
 
       - name: Build Wheels
         run: |
@@ -73,6 +62,9 @@ jobs:
     name: Publish Wheels
     runs-on: ubuntu-latest
     needs: [build]
+    strategy:
+      matrix:
+        python-version: ["3.13"]
     environment: release
     permissions:
       id-token: write
@@ -83,6 +75,16 @@ jobs:
           pattern: wheels-*
           merge-multiple: true
           path: dist/
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: "**/pyproject.toml"
+
+      - name: Install dependencies
+        run: |
+          pip install -U twine
 
       - name: Publish Wheels
         env:
