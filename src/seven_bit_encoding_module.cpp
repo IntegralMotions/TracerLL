@@ -1,10 +1,7 @@
 #define PY_SSIZE_T_CLEAN
-
 #include <Python.h>
 #include "seven_bit_encoding.h"
-#include "version.h"
 
-// SevenBitEncoding submodule methods with docstrings
 static PyObject *py_get_encoded_size(PyObject *, PyObject *args)
 {
     unsigned int value;
@@ -110,47 +107,7 @@ static struct PyModuleDef seven_bit_encoding_module = {
     -1,
     SevenBitEncodingMethods};
 
-// Main module (TracerLL) definition; may be empty
-static PyMethodDef TracerLLMethods[] = {
-    {NULL, NULL, 0, NULL}};
-
-static struct PyModuleDef tracerllmodule = {
-    PyModuleDef_HEAD_INIT,
-    "TracerLL",
-    "Module containing submodules for low-level tracing.",
-    -1,
-    TracerLLMethods};
-
-PyMODINIT_FUNC PyInit_TracerLL(void)
+PyMODINIT_FUNC PyInit_SevenBitEncoding(void)
 {
-    PyObject *m = PyModule_Create(&tracerllmodule);
-    if (!m)
-    {
-        PyErr_Print();
-        return NULL;
-    }
-
-    PyObject *submod = PyModule_Create(&seven_bit_encoding_module);
-    if (!submod)
-    {
-        PyErr_Print();
-        Py_DECREF(m);
-        return NULL;
-    }
-
-    if (PyModule_AddObject(m, "SevenBitEncoding", submod) < 0)
-    {
-        PyErr_Print();
-        Py_DECREF(submod);
-        Py_DECREF(m);
-        return NULL;
-    }
-
-    if (PyModule_AddStringConstant(m, "__version__", TRACERLL_VERSION) < 0)
-    {
-        PyErr_Print();
-        return NULL;
-    }
-
-    return m;
+    return PyModule_Create(&seven_bit_encoding_module);
 }

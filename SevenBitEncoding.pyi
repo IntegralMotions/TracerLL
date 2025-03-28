@@ -1,5 +1,3 @@
-# SevenBitTracer.pyi
-
 def get_encoded_size(value: int) -> int:
     """
     get_encoded_size(value: int) -> int

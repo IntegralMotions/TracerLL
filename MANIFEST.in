@@ -1,3 +1,5 @@
-include seven_bit_encoding.h
-include tracerll_module.cpp
-include seven_bit_encoding.cpp
+include src/tracerll_module.cpp
+include src/seven_bit_encoding.h
+include src/seven_bit_encoding.cpp
+include src/seven_bit_encoding_module.h
+include src/seven_bit_encoding_module.cpp
