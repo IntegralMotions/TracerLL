@@ -15,6 +15,9 @@ VERSION = get_version_from_toml()
 with open("src/version.h", "w") as f:
     f.write(f'#define TRACERLL_VERSION "{VERSION}"\n')
 
+if not os.path.exists("src/TracerLL"):
+    os.makedirs("src/TracerLL")
+
 tracerll_module = Extension(
     "TracerLL",
     sources=["src/tracerll_module.cpp", "src/seven_bit_encoding_module.cpp", "src/seven_bit_encoding.cpp"],
