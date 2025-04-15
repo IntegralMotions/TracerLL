@@ -156,7 +156,7 @@ void Tracer::writeMessage(const std::vector<uint8_t> &message)
 #else
     if (_fd >= 0 && encodedLen > 0)
     {
-        write(_fd, encoded, encodedLen);
+        write(_fd, encoded.data(), encoded.size());
     }
 #endif
 }
