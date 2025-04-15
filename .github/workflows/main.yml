@@ -23,7 +23,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          pip install -U pytest
+          pip install -U pytest pybind11
           pip install -e '.[test]'
           
       - name: Run tests
@@ -49,7 +49,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -U setuptools wheel build cibuildwheel
+          pip install -U setuptools wheel build cibuildwheel pybind11
 
       - name: Build Wheels
         run: |
