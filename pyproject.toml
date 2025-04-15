@@ -1,17 +1,17 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools", "wheel", "pybind11"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "TracerLL"
-version = "0.2.3"
+version = "0.2.5"
 description = "TracerLL: High-performance embedded variable tracing library"
 authors = [
     { name = "Jos Wigchert", email = "joswigchert@integralmotions.com" },
     { name = "William Kers", email = "williamkers@integralmotions.com" },
 ]
 readme = "README.md"
-license = "MIT"
+license = { text = "MIT" }
 dependencies = []
 requires-python = ">=3.9"
 

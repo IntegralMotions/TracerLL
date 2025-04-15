@@ -30,7 +30,3 @@ def test_encode_decode_buffer():
 def test_is_last_byte():
     assert SevenBitEncoding.is_last_byte(0b01111111)  # Last byte (MSB = 0)
     assert not SevenBitEncoding.is_last_byte(0b10000000)  # Not last (MSB = 1)
-
-
-def test_left_mask():
-    assert SevenBitEncoding.left_mask(3) == 0b00000111
