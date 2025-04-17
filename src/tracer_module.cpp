@@ -13,7 +13,7 @@ PYBIND11_MODULE(Tracer, m)
         )pbdoc")
         .def(py::init<const std::string &, uint32_t>(), py::arg("port"), py::arg("baud"))
         .def("start", &Tracer::start, R"pbdoc(
-            start() -> None
+            start() -> boolean
 
             Open the serial port and start reading in a background thread.
         )pbdoc")
@@ -27,9 +27,24 @@ PYBIND11_MODULE(Tracer, m)
 
             Return a list of complete messages received since the last call.
         )pbdoc")
-        .def("write_message", &Tracer::writeMessage, py::arg("message"), R"pbdoc(
-            write_message(message: bytes) -> None
+        .def("write_message", [](Tracer &self, py::object msg)
+             {
+                 std::vector<uint8_t> buffer;
+
+                 if (py::isinstance<py::bytes>(msg))
+                 {
+                     std::string s = msg.cast<std::string>();
+                     buffer.assign(s.begin(), s.end());
+                 }
+                 else
+                 {
+                     buffer = msg.cast<std::vector<uint8_t>>();
+                 }
+
+                 self.writeMessage(buffer); }, py::arg("message"), R"pbdoc(
+            write_message(message: bytes | list[int]) -> None
 
             Encode and send the given message over the serial port.
-        )pbdoc");
+        )pbdoc",
+             py::call_guard<py::gil_scoped_release>());
 }

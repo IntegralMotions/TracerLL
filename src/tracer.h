@@ -14,7 +14,7 @@ public:
     Tracer(const std::string &port, uint32_t baud);
     ~Tracer();
 
-    void start();
+    bool start();
     void stop();
     std::vector<std::vector<uint8_t>> getMessages();
     void writeMessage(const std::vector<uint8_t> &message);
@@ -24,7 +24,7 @@ private:
     uint32_t _baud;
     std::thread _thread;
     std::mutex _readMutex;
-    std::mutex _writeMutex;
+    std::timed_mutex _writeMutex;
 
     std::atomic<bool> _running{false};
 
