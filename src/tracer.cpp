@@ -355,7 +355,7 @@ void Tracer::writeMessage(const std::vector<uint8_t> &message)
     size_t off = 0;
     while (off < n)
     {
-        ssize_t w = ::write(_fd, enc.data() + off, n - off);
+        ssize_t w = ::write(_fd, encoded.data() + off, encodedLen - off);
         if (w > 0)
         {
             off += static_cast<size_t>(w);
