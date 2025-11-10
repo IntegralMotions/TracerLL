@@ -8,6 +8,10 @@
 #include <mutex>
 #include <atomic>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 class Tracer
 {
 public:
@@ -32,7 +36,7 @@ private:
     std::queue<std::vector<uint8_t>> _messages;
 
 #ifdef _WIN32
-    void *_handle = nullptr;
+    HANDLE _handle = INVALID_HANDLE_VALUE;
 #else
     int _fd = -1;
 #endif
