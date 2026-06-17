@@ -1,0 +1,16 @@
+Checks: >
+  -*,
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  cppcoreguidelines-avoid-goto,
+  cppcoreguidelines-no-malloc,
+  cppcoreguidelines-non-private-member-variables-in-classes,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-owning-memory
+
+WarningsAsErrors: ''
+HeaderFilterRegex: '.*'
+FormatStyle: none

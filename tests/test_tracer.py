@@ -18,7 +18,7 @@ def test_can_start_and_stop(tracer):
 
 
 def test_can_write_list_and_get_message(tracer):
-    message = [0x81, 0x01]  # Single-byte 7-bit encoded message (e.g., 0x81 = value 1)
+    message = [0x01, 0x02]
     # tracer.write_message(message)
 
     # Nothing to assert without loopback or mocking, just ensure no crash
@@ -26,7 +26,7 @@ def test_can_write_list_and_get_message(tracer):
 
 
 def test_can_write_bytes_and_get_message(tracer):
-    message = bytes([0x81, 0x01])  # Single-byte 7-bit encoded message (e.g., 0x81 = value 1)
+    message = bytes([0x01, 0x02])
     tracer.write_message(message)
 
     # Nothing to assert without loopback or mocking, just ensure no crash

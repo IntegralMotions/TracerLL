@@ -1,9 +1,9 @@
-# Turn TracerLL into a package and attach submodules
+from importlib.metadata import PackageNotFoundError, version
 
 try:
-    from . import SevenBitEncoding
-except ImportError:
-    SevenBitEncoding = None
+    __version__ = version("TracerLL")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
 
 try:
     from . import Tracer

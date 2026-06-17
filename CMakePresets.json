@@ -1,0 +1,15 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "clangd",
+      "displayName": "clangd compile database",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/clangd",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "pybind11_DIR": "${sourceDir}/.venv/lib/python3.9/site-packages/pybind11/share/cmake/pybind11"
+      }
+    }
+  ]
+}

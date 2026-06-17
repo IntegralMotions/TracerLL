@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools", "wheel", "pybind11"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core", "pybind11"]
+build-backend = "scikit_build_core.build"
 
 [project]
 name = "TracerLL"
-version = "0.2.7"
+version = "0.3.0"
 description = "TracerLL: High-performance embedded variable tracing library"
 authors = [
     { name = "Jos Wigchert", email = "joswigchert@integralmotions.com" },
@@ -14,6 +14,10 @@ readme = "README.md"
 license = { text = "MIT" }
 dependencies = []
 requires-python = ">=3.9"
+
+[tool.scikit-build]
+minimum-version = "0.10"
+wheel.packages = ["src/TracerLL"]
 
 [tool.cibuildwheel]
 skip = "cp36-* cp37-* cp38-* pp*"

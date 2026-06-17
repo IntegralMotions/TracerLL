@@ -7,10 +7,10 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <memory>
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
+class CobsEncodedCommunication;
+class UsbCommunication;
 
 class Tracer
 {
@@ -28,18 +28,12 @@ private:
     uint32_t _baud;
     std::thread _thread;
     std::mutex _readMutex;
-    std::timed_mutex _writeMutex;
 
     std::atomic<bool> _running{false};
 
-    std::vector<uint8_t> _incomplete;
     std::queue<std::vector<uint8_t>> _messages;
-
-#ifdef _WIN32
-    HANDLE _handle = INVALID_HANDLE_VALUE;
-#else
-    int _fd = -1;
-#endif
+    std::unique_ptr<UsbCommunication> _usbCommunication;
+    std::unique_ptr<CobsEncodedCommunication> _cobsCommunication;
 
     bool isOpen();
     bool openPort();
