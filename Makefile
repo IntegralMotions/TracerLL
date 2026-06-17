@@ -1,7 +1,8 @@
 BUILD_DIR  := build
 GENERATOR  := Unix Makefiles
-BUILD_TYPE ?= Debug  # default if not overridden
+BUILD_TYPE ?= Debug
 DEPENDENCY_TESTS ?= OFF
+PYBIND11_DIR := $(shell python -m pybind11 --cmakedir)
 
 .PHONY: build test test-all clean configure debug release
 
@@ -11,7 +12,8 @@ configure:
 	      -DCMAKE_BUILD_TYPE=$(BUILD_TYPE) \
 	      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
 	      -DINTEGRAL_BUILD_DEPENDENCY_TESTS=$(DEPENDENCY_TESTS) \
-  		  -Dpybind11_DIR="$(python -m pybind11 --cmakedir)"
+	      -DPYBIND11_FINDPYTHON=ON \
+	      -Dpybind11_DIR="$(PYBIND11_DIR)"
 
 build: configure
 	cmake --build $(BUILD_DIR) --parallel

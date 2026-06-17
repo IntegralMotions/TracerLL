@@ -10,45 +10,32 @@
 #include <windows.h>
 using ssize_t = std::make_signed_t<size_t>;
 #else
-#include <sys/ioctl.h>
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <termios.h>
 #include <unistd.h>
 #endif
 
-UsbCommunication::UsbCommunication(std::string port, uint32_t baud)
-    : _port(std::move(port)), _baud(baud)
-{
-}
+UsbCommunication::UsbCommunication(std::string port, uint32_t baud) : _port(std::move(port)), _baud(baud) {}
 
-UsbCommunication::~UsbCommunication()
-{
+UsbCommunication::~UsbCommunication() {
     close();
 }
 
-bool UsbCommunication::open()
-{
-    if (isOpen())
-    {
+bool UsbCommunication::open() {
+    if (isOpen()) {
         return true;
     }
 
 #ifdef _WIN32
     std::string full = "\\\\.\\" + _port;
-    _handle = CreateFileA(
-        full.c_str(),
-        GENERIC_READ | GENERIC_WRITE,
-        0, nullptr,
-        OPEN_EXISTING,
-        FILE_FLAG_OVERLAPPED,
-        nullptr);
+    _handle = CreateFileA(full.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED,
+                          nullptr);
 
-    if (_handle == INVALID_HANDLE_VALUE)
-    {
-        std::cerr << "UsbCommunication: failed to open port \"" << _port
-                  << "\", error code " << GetLastError() << "\n";
+    if (_handle == INVALID_HANDLE_VALUE) {
+        std::cerr << "UsbCommunication: failed to open port \"" << _port << "\", error code " << GetLastError() << "\n";
         return false;
     }
 
@@ -56,8 +43,7 @@ bool UsbCommunication::open()
 
     DCB dcb{};
     dcb.DCBlength = sizeof(dcb);
-    if (!GetCommState(_handle, &dcb))
-    {
+    if (!GetCommState(_handle, &dcb)) {
         return false;
     }
     dcb.BaudRate = _baud;
@@ -75,8 +61,7 @@ bool UsbCommunication::open()
     dcb.fRtsControl = RTS_CONTROL_ENABLE;
     dcb.fDtrControl = DTR_CONTROL_ENABLE;
 
-    if (!SetCommState(_handle, &dcb))
-    {
+    if (!SetCommState(_handle, &dcb)) {
         return false;
     }
 
@@ -95,18 +80,14 @@ bool UsbCommunication::open()
     PurgeComm(_handle, PURGE_TXCLEAR | PURGE_RXCLEAR);
 #else
     _fd = ::open(_port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
-    if (_fd < 0)
-    {
-        std::cerr << "UsbCommunication: failed to open port \"" << _port
-                  << "\": " << std::strerror(errno) << "\n";
+    if (_fd < 0) {
+        std::cerr << "UsbCommunication: failed to open port \"" << _port << "\": " << std::strerror(errno) << "\n";
         return false;
     }
 
     termios tty{};
-    if (tcgetattr(_fd, &tty) != 0)
-    {
-        std::cerr << "UsbCommunication: tcgetattr failed: "
-                  << std::strerror(errno) << "\n";
+    if (tcgetattr(_fd, &tty) != 0) {
+        std::cerr << "UsbCommunication: tcgetattr failed: " << std::strerror(errno) << "\n";
     }
     cfmakeraw(&tty);
     cfsetospeed(&tty, _baud);
@@ -118,10 +99,8 @@ bool UsbCommunication::open()
     tty.c_cc[VTIME] = 1;
 
     tcflush(_fd, TCIOFLUSH);
-    if (tcsetattr(_fd, TCSANOW, &tty) != 0)
-    {
-        std::cerr << "UsbCommunication: tcsetattr failed: "
-                  << std::strerror(errno) << "\n";
+    if (tcsetattr(_fd, TCSANOW, &tty) != 0) {
+        std::cerr << "UsbCommunication: tcsetattr failed: " << std::strerror(errno) << "\n";
     }
 
     int flags = fcntl(_fd, F_GETFL);
@@ -131,25 +110,21 @@ bool UsbCommunication::open()
     return true;
 }
 
-void UsbCommunication::close()
-{
+void UsbCommunication::close() {
 #ifdef _WIN32
-    if (_handle != INVALID_HANDLE_VALUE)
-    {
+    if (_handle != INVALID_HANDLE_VALUE) {
         CloseHandle(_handle);
         _handle = INVALID_HANDLE_VALUE;
     }
 #else
-    if (_fd >= 0)
-    {
+    if (_fd >= 0) {
         ::close(_fd);
         _fd = -1;
     }
 #endif
 }
 
-bool UsbCommunication::isOpen() const
-{
+bool UsbCommunication::isOpen() const {
 #ifdef _WIN32
     return _handle != INVALID_HANDLE_VALUE;
 #else
@@ -157,40 +132,33 @@ bool UsbCommunication::isOpen() const
 #endif
 }
 
-size_t UsbCommunication::availableImpl()
-{
+size_t UsbCommunication::availableImpl() {
 #ifdef _WIN32
-    if (_handle == INVALID_HANDLE_VALUE)
-    {
+    if (_handle == INVALID_HANDLE_VALUE) {
         return 0;
     }
 
     COMSTAT status{};
     DWORD errors = 0;
-    if (!ClearCommError(_handle, &errors, &status))
-    {
+    if (!ClearCommError(_handle, &errors, &status)) {
         return 0;
     }
     return static_cast<size_t>(status.cbInQue);
 #else
-    if (_fd < 0)
-    {
+    if (_fd < 0) {
         return 0;
     }
 
     int available = 0;
-    if (ioctl(_fd, FIONREAD, &available) != 0 || available < 0)
-    {
+    if (ioctl(_fd, FIONREAD, &available) != 0 || available < 0) {
         return 0;
     }
     return static_cast<size_t>(available);
 #endif
 }
 
-size_t UsbCommunication::readImpl(uint8_t *data, size_t size)
-{
-    if (data == nullptr || size == 0 || !isOpen())
-    {
+size_t UsbCommunication::readImpl(uint8_t* data, size_t size) {
+    if (data == nullptr || size == 0 || !isOpen()) {
         return 0;
     }
 
@@ -199,75 +167,57 @@ size_t UsbCommunication::readImpl(uint8_t *data, size_t size)
     OVERLAPPED ov{};
     ov.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
     BOOL ok = ReadFile(_handle, data, static_cast<DWORD>(std::min<size_t>(size, 1 << 16)), nullptr, &ov);
-    if (!ok && GetLastError() == ERROR_IO_PENDING)
-    {
+    if (!ok && GetLastError() == ERROR_IO_PENDING) {
         DWORD wait = WaitForSingleObject(ov.hEvent, 100);
-        if (wait == WAIT_OBJECT_0)
-        {
+        if (wait == WAIT_OBJECT_0) {
             GetOverlappedResult(_handle, &ov, &bytesRead, FALSE);
-        }
-        else
-        {
+        } else {
             CancelIo(_handle);
         }
-    }
-    else if (ok)
-    {
+    } else if (ok) {
         GetOverlappedResult(_handle, &ov, &bytesRead, TRUE);
     }
     CloseHandle(ov.hEvent);
     return static_cast<size_t>(bytesRead);
 #else
     ssize_t bytesRead = ::read(_fd, data, size);
-    if (bytesRead <= 0)
-    {
+    if (bytesRead <= 0) {
         return 0;
     }
     return static_cast<size_t>(bytesRead);
 #endif
 }
 
-size_t UsbCommunication::writeImpl(const uint8_t *data, size_t size)
-{
-    if (data == nullptr || size == 0 || !isOpen())
-    {
+size_t UsbCommunication::writeImpl(const uint8_t* data, size_t size) {
+    if (data == nullptr || size == 0 || !isOpen()) {
         return 0;
     }
 
 #ifdef _WIN32
-    if (!_writeMutex.try_lock_for(std::chrono::milliseconds(100)))
-    {
+    if (!_writeMutex.try_lock_for(std::chrono::milliseconds(100))) {
         std::cerr << "UsbCommunication: write busy\n";
         return 0;
     }
 
     size_t offset = 0;
-    while (offset < size)
-    {
+    while (offset < size) {
         OVERLAPPED ov{};
         ov.hEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
         DWORD toWrite = static_cast<DWORD>(std::min<size_t>(size - offset, 1 << 16));
         DWORD written = 0;
         BOOL ok = WriteFile(_handle, data + offset, toWrite, nullptr, &ov);
-        if (!ok && GetLastError() == ERROR_IO_PENDING)
-        {
+        if (!ok && GetLastError() == ERROR_IO_PENDING) {
             DWORD wait = WaitForSingleObject(ov.hEvent, 2000);
-            if (wait == WAIT_OBJECT_0)
-            {
+            if (wait == WAIT_OBJECT_0) {
                 GetOverlappedResult(_handle, &ov, &written, FALSE);
-            }
-            else
-            {
+            } else {
                 CancelIo(_handle);
             }
-        }
-        else if (ok)
-        {
+        } else if (ok) {
             GetOverlappedResult(_handle, &ov, &written, TRUE);
         }
         CloseHandle(ov.hEvent);
-        if (written == 0)
-        {
+        if (written == 0) {
             std::cerr << "UsbCommunication: write error\n";
             break;
         }
@@ -277,27 +227,22 @@ size_t UsbCommunication::writeImpl(const uint8_t *data, size_t size)
     _writeMutex.unlock();
     return offset;
 #else
-    if (!_writeMutex.try_lock_for(std::chrono::milliseconds(100)))
-    {
+    if (!_writeMutex.try_lock_for(std::chrono::milliseconds(100))) {
         std::cerr << "UsbCommunication: write busy\n";
         return 0;
     }
 
     size_t off = 0;
-    while (off < size)
-    {
+    while (off < size) {
         ssize_t written = ::write(_fd, data + off, size - off);
-        if (written > 0)
-        {
+        if (written > 0) {
             off += static_cast<size_t>(written);
             continue;
         }
-        if (written == -1 && errno == EINTR)
-        {
+        if (written == -1 && errno == EINTR) {
             continue;
         }
-        if (written == -1 && (errno == EAGAIN || errno == EWOULDBLOCK))
-        {
+        if (written == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
             continue;
         }
         std::cerr << "UsbCommunication: write failed: " << std::strerror(errno) << "\n";
