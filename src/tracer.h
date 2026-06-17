@@ -1,29 +1,28 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <queue>
-#include <cstdint>
-#include <thread>
-#include <mutex>
 #include <atomic>
+#include <cstdint>
 #include <memory>
+#include <mutex>
+#include <queue>
+#include <string>
+#include <thread>
+#include <vector>
 
 class CobsEncodedCommunication;
 class UsbCommunication;
 
-class Tracer
-{
-public:
-    Tracer(const std::string &port, uint32_t baud);
+class Tracer {
+  public:
+    Tracer(const std::string& port, uint32_t baud);
     ~Tracer();
 
     bool start();
     void stop();
     std::vector<std::vector<uint8_t>> getMessages();
-    void writeMessage(const std::vector<uint8_t> &message);
+    void writeMessage(const std::vector<uint8_t>& message);
 
-private:
+  private:
     std::string _port;
     uint32_t _baud;
     std::thread _thread;

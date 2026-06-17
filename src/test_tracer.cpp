@@ -1,16 +1,15 @@
 #include "tracer.h"
-#include <iostream>
-#include <thread>
 #include <chrono>
+#include <iostream>
 #include <map>
+#include <thread>
 #include <vector>
 
-int main()
-{
+int main() {
 #ifdef _WIN32
     Tracer tracer("COM10", 9600);
 #else
-    Tracer tracer("/dev/ttyUSB0", B9600);
+    Tracer tracer("/dev/ttyUSB0", 9600);
 #endif
 
     std::vector<uint8_t> header;
@@ -18,8 +17,7 @@ int main()
     header.push_back(0x00);
 
     bool success = tracer.start();
-    if (!success)
-    {
+    if (!success) {
         return 0;
     }
     tracer.writeMessage(header);
@@ -33,13 +31,12 @@ int main()
     std::map<size_t, size_t> sizeCounts;
     size_t totalBytes = 0;
 
-    for (const auto &msg : messages)
-    {
+    for (const auto& msg : messages) {
         sizeCounts[msg.size()]++;
         totalBytes += msg.size();
     }
 
-    for (const auto &[size, count] : sizeCounts)
+    for (const auto& [size, count] : sizeCounts)
         std::cout << size << " bytes x" << count << ", ";
 
     std::cout << "\nTotal bytes received: " << totalBytes << std::endl;

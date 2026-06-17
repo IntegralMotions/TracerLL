@@ -19,7 +19,7 @@ class UsbCommunication : public Communication {
 
     bool open();
     void close();
-    bool isOpen() const;
+    [[nodiscard]] bool isOpen() const;
 
   private:
     size_t writeImpl(const uint8_t* data, size_t size) override;
