@@ -31,6 +31,16 @@ jobs:
           persist-credentials: false
           path: embedded-tracing
 
+      # Match the CoreUtilities version pinned by IntegralCommunication v0.5.2.
+      - name: Check out IntegralCoreUtilities
+        uses: actions/checkout@v4
+        with:
+          repository: IntegralMotions/IntegralCoreUtilities
+          ref: v0.3.1
+          token: ${{ secrets.DEPENDENCY_TOKEN }}
+          persist-credentials: false
+          path: core-utilities
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.15"
@@ -42,7 +52,8 @@ jobs:
       - name: Build trace device
         shell: bash
         run: |
-          cmake -S embedded-tracing -B embedded-build -DINTEGRAL_BUILD_TESTS=OFF -DINTEGRAL_BUILD_EXAMPLES=ON
+          cmake -S embedded-tracing -B embedded-build -DINTEGRAL_BUILD_TESTS=OFF -DINTEGRAL_BUILD_EXAMPLES=ON \
+            -DFETCHCONTENT_SOURCE_DIR_INTEGRALCOREUTILITIES="$GITHUB_WORKSPACE/core-utilities"
           cmake --build embedded-build --config Release --target TracingSerialDevice --parallel
 
       - name: Install and configure com0com
