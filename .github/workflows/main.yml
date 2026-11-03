@@ -8,6 +8,7 @@ on:
 jobs:
   serial-integration:
     uses: ./.github/workflows/serial-integration.yml
+    secrets: inherit
 
   test:
     runs-on: ${{ matrix.os }}

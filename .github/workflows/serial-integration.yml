@@ -27,6 +27,8 @@ jobs:
         with:
           repository: IntegralMotions/IntegralEmbeddedTracing
           ref: main
+          token: ${{ secrets.DEPENDENCY_TOKEN }}
+          persist-credentials: false
           path: embedded-tracing
 
       - uses: actions/setup-python@v5
