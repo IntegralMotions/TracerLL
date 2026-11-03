@@ -23,7 +23,6 @@ FetchContent_Declare(
     IntegralCommunication
     GIT_REPOSITORY https://github.com/IntegralMotions/IntegralCommunication.git
     GIT_TAG 858bf6cb2095cd74fd0601b9beeeefc9809fb57b
-    GIT_SHALLOW TRUE
 )
 
 set(INTEGRALCOMM_BUILD_TESTS OFF CACHE BOOL "" FORCE)

@@ -9,3 +9,8 @@ try:
     from . import Tracer
 except ImportError:
     Tracer = None
+
+if Tracer is not None:
+    from .EmbeddedTracer import EmbeddedTracer, TraceValues
+from .TraceMessageType import TraceMessageType
+from .TraceValueType import TraceValueType

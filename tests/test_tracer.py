@@ -1,4 +1,5 @@
 import pytest
+import os
 from TracerLL import Tracer
 
 
@@ -36,3 +37,21 @@ def test_can_write_bytes_and_get_message(tracer):
 def test_get_messages_empty(tracer):
     messages = tracer.get_messages()
     assert messages == [] or isinstance(messages, list)
+
+
+def test_write_message_rejects_invalid_python_input(tracer):
+    with pytest.raises((TypeError, ValueError)):
+        tracer.write_message(object())
+
+
+def test_write_fails_when_closed_and_zero_queue_rejected():
+    assert not Tracer.Tracer("COM_FAKE", 9600).write_message(b"hello")
+    with pytest.raises(ValueError):
+        Tracer.Tracer("COM_FAKE", 9600, 0)
+
+
+@pytest.mark.skipif(os.name != "posix", reason="/dev/null is a POSIX device")
+def test_non_serial_device_cannot_start():
+    tracer = Tracer.Tracer("/dev/null", 115200)
+    assert not tracer.start()
+    tracer.stop()

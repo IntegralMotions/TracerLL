@@ -20,6 +20,9 @@ class UsbCommunication : public Communication {
     bool open();
     void close();
     [[nodiscard]] bool isOpen() const;
+    // Called only while the owning Tracer serializes writes.
+    void resetWriteStatus() { _lastWriteSucceeded = false; }
+    [[nodiscard]] bool lastWriteSucceeded() const { return _lastWriteSucceeded; }
 
   private:
     size_t writeImpl(const uint8_t* data, size_t size) override;
@@ -29,6 +32,7 @@ class UsbCommunication : public Communication {
     std::string _port;
     uint32_t _baud;
     std::timed_mutex _writeMutex;
+    bool _lastWriteSucceeded = false;
 
 #ifdef _WIN32
     HANDLE _handle = INVALID_HANDLE_VALUE;
