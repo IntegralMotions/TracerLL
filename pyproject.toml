@@ -15,6 +15,9 @@ license = { text = "MIT" }
 dependencies = []
 requires-python = ">=3.9"
 
+[project.optional-dependencies]
+test = ["pytest"]
+
 [tool.scikit-build]
 minimum-version = "0.10"
 wheel.packages = ["src/TracerLL"]
