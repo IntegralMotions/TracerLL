@@ -64,6 +64,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "com0com port-pair creation failed: $LASTEXITCODE" }
           & $setup.FullName list
           if ($LASTEXITCODE -ne 0) { throw "com0com port listing failed: $LASTEXITCODE" }
+          $ready = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            $entry = Get-ItemProperty 'HKLM:\HARDWARE\DEVICEMAP\SERIALCOMM' -ErrorAction SilentlyContinue
+            $ports = if ($entry) { @($entry.PSObject.Properties | ForEach-Object { $_.Value }) } else { @() }
+            if ($ports -contains 'COM30' -and $ports -contains 'COM31') { $ready = $true; break }
+            Start-Sleep -Seconds 1
+          }
+          if (-not $ready) { throw 'COM30 and COM31 did not become available; check driver signature and installation' }
 
       - name: Run serial integration (Linux and macOS)
         if: runner.os != 'Windows'
