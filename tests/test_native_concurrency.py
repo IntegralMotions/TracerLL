@@ -1,6 +1,7 @@
-"""Exercise native write and lifecycle synchronization with a local PTY."""
+"""Exercise native transport using a PTY or an explicitly configured COM pair."""
 
 import collections
+from contextlib import contextmanager
 import os
 import select
 import threading
@@ -8,7 +9,43 @@ import time
 
 import pytest
 
-pytestmark = pytest.mark.skipif(os.name != "posix", reason="Requires a POSIX pseudo-terminal")
+pytestmark = pytest.mark.skipif(
+    os.name != "posix" and not (os.name == "nt" and os.environ.get("TRACER_TEST_PORT_A")
+                                and os.environ.get("TRACER_TEST_PORT_B")),
+    reason="Requires a POSIX pseudo-terminal or a configured Windows COM pair",
+)
+
+
+@contextmanager
+def open_serial_pair():
+    """Yield the tracer port and a peer exposing read/write on either platform."""
+    if os.name == "nt":
+        import serial
+
+        peer = serial.Serial(os.environ["TRACER_TEST_PORT_B"], 115200, timeout=0.02, write_timeout=3)
+        try:
+            peer.reset_input_buffer()
+            peer.reset_output_buffer()
+            yield os.environ["TRACER_TEST_PORT_A"], peer
+        finally:
+            peer.close()
+    else:
+        import pty
+
+        master, slave = pty.openpty()
+
+        class PtyPeer:
+            def read(self, size):
+                return os.read(master, size) if select.select([master], [], [], 0.02)[0] else b""
+
+            def write(self, data):
+                return os.write(master, data)
+
+        try:
+            yield os.ttyname(slave), PtyPeer()
+        finally:
+            os.close(slave)
+            os.close(master)
 
 
 def decode_cobs(frame):
@@ -27,30 +64,26 @@ def decode_cobs(frame):
 
 @pytest.fixture
 def serial_pair():
-    import pty
     from TracerLL import Tracer
 
-    master, slave = pty.openpty()
-    tracer = Tracer.Tracer(os.ttyname(slave), 115200)
-    assert tracer.start()
-    data = bytearray()
-    done = threading.Event()
+    with open_serial_pair() as (port, peer):
+        tracer = Tracer.Tracer(port, 115200)
+        assert tracer.start()
+        data = bytearray()
+        done = threading.Event()
 
-    def read_master():
-        while not done.is_set():
-            if select.select([master], [], [], 0.02)[0]:
-                data.extend(os.read(master, 65536))
+        def read_peer():
+            while not done.is_set():
+                data.extend(peer.read(65536))
 
-    reader = threading.Thread(target=read_master, daemon=True)
-    reader.start()
-    try:
-        yield tracer, data
-    finally:
-        tracer.stop()
-        done.set()
-        reader.join(timeout=2)
-        os.close(slave)
-        os.close(master)
+        reader = threading.Thread(target=read_peer, daemon=True)
+        reader.start()
+        try:
+            yield tracer, data
+        finally:
+            tracer.stop()
+            done.set()
+            reader.join(timeout=2)
 
 
 def test_simultaneous_writes_preserve_complete_frames(serial_pair):
@@ -104,70 +137,64 @@ def test_stop_and_restart_while_writing(serial_pair):
 
 
 def test_receive_queue_is_bounded_and_reports_drops():
-    import pty
     from TracerLL import Tracer
 
-    master, slave = pty.openpty()
-    tracer = Tracer.Tracer(os.ttyname(slave), 115200, receive_queue_capacity=4)
-    try:
-        assert tracer.start()
-        os.write(master, b"".join(bytes([2, value, 0]) for value in range(1, 21)))
-        deadline = time.monotonic() + 3
-        while tracer.dropped_messages() < 16 and time.monotonic() < deadline:
-            time.sleep(0.005)
-        assert tracer.dropped_messages() == 16
-        assert tracer.get_messages() == [[1], [2], [3], [4]]
-        tracer.stop()
-        assert tracer.dropped_messages() == 16
-    finally:
-        tracer.stop()
-        os.close(slave)
-        os.close(master)
+    with open_serial_pair() as (port, peer):
+        tracer = Tracer.Tracer(port, 115200, receive_queue_capacity=4)
+        try:
+            assert tracer.start()
+            data = b"".join(bytes([2, value, 0]) for value in range(1, 21))
+            assert peer.write(data) == len(data)
+            deadline = time.monotonic() + 3
+            while tracer.dropped_messages() < 16 and time.monotonic() < deadline:
+                time.sleep(0.005)
+            assert tracer.dropped_messages() == 16
+            assert tracer.get_messages() == [[1], [2], [3], [4]]
+            tracer.stop()
+            assert tracer.dropped_messages() == 16
+        finally:
+            tracer.stop()
 
 
 def test_full_serial_output_times_out_and_stop_finishes():
-    import pty
     from TracerLL import Tracer
 
-    master, slave = pty.openpty()
-    tracer = Tracer.Tracer(os.ttyname(slave), 115200)
-    try:
-        assert tracer.start()
-        started = time.monotonic()
-        # Never drain the master, so the PTY output eventually fills.
-        for _ in range(500):
-            if not tracer.write_message(b"x" * 4000):
-                break
-        else:
-            pytest.fail("PTY output did not fill")
-        assert time.monotonic() - started < 5
-        started = time.monotonic()
-        tracer.stop()
-        assert time.monotonic() - started < 2
-    finally:
-        tracer.stop()
-        os.close(slave)
-        os.close(master)
+    with open_serial_pair() as (port, peer):
+        tracer = Tracer.Tracer(port, 115200)
+        try:
+            assert tracer.start()
+            started = time.monotonic()
+            # Keep the peer open but do not drain it, so its input eventually fills.
+            for _ in range(500):
+                if not tracer.write_message(b"x" * 4000):
+                    break
+            else:
+                pytest.fail("Virtual serial output did not fill")
+            assert time.monotonic() - started < 5
+            started = time.monotonic()
+            tracer.stop()
+            assert time.monotonic() - started < 2
+        finally:
+            tracer.stop()
 
 
 def test_oversized_unterminated_frame_recovers_at_next_delimiter():
-    import pty
     from TracerLL import Tracer
 
-    master, slave = pty.openpty()
-    tracer = Tracer.Tracer(os.ttyname(slave), 115200)
-    try:
-        assert tracer.start()
-        os.write(master, b"\x02\x11\x00" + b"\x01" * 4096)
-        time.sleep(0.02)
-        os.write(master, b"\x01" * 100 + b"\x00\x02\x2a\x00")
-        messages = []
-        deadline = time.monotonic() + 3
-        while len(messages) < 2 and time.monotonic() < deadline:
-            messages.extend(tracer.get_messages())
-            time.sleep(0.005)
-        assert messages == [[0x11], [0x2A]]
-    finally:
-        tracer.stop()
-        os.close(slave)
-        os.close(master)
+    with open_serial_pair() as (port, peer):
+        tracer = Tracer.Tracer(port, 115200)
+        try:
+            assert tracer.start()
+            first = b"\x02\x11\x00" + b"\x01" * 4096
+            assert peer.write(first) == len(first)
+            time.sleep(0.02)
+            second = b"\x01" * 100 + b"\x00\x02\x2a\x00"
+            assert peer.write(second) == len(second)
+            messages = []
+            deadline = time.monotonic() + 3
+            while len(messages) < 2 and time.monotonic() < deadline:
+                messages.extend(tracer.get_messages())
+                time.sleep(0.005)
+            assert messages == [[0x11], [0x2A]]
+        finally:
+            tracer.stop()
