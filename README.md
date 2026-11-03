@@ -79,9 +79,13 @@ the printed path before running the test. This test sends commands, so do not ru
 it against a real device or a port in use by another client. It is skipped during
 normal test runs unless `TRACER_SERIAL_TEST=1` is set.
 
-CI runs the normal test suite on macOS, Linux, and Windows. Pseudo-terminal
-tests run on macOS and Linux; the opt-in virtual-device integration tests and
-Windows physical COM-port behavior require separate testing.
+CI runs the normal test suite and a separate virtual-serial integration job on
+macOS, Linux, and Windows. The integration job checks out
+`IntegralMotions/IntegralEmbeddedTracing` at `main` and builds its example;
+that branch must include the serial example and Windows COM-port support. On
+Windows it installs a checksum-pinned com0com driver and uses a virtual COM pair.
+Driver installation and physical COM-port behavior depend on the runner and
+hardware respectively.
 
 ## VS Code clangd
 
