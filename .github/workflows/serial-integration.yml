@@ -84,3 +84,15 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: tracerll
         run: python tests/integration/run_virtual_device.py ../embedded-build/Release/TracingSerialDevice.exe --device-port COM30 --host-port COM31
+
+      - name: Install Windows serial test dependency
+        if: runner.os == 'Windows'
+        run: python -m pip install pyserial
+
+      - name: Run native transport tests (Windows COM pair)
+        if: runner.os == 'Windows'
+        working-directory: tracerll
+        env:
+          TRACER_TEST_PORT_A: COM30
+          TRACER_TEST_PORT_B: COM31
+        run: python -m pytest -v tests/test_native_concurrency.py

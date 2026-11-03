@@ -87,6 +87,12 @@ Windows it installs a checksum-pinned com0com driver and uses a virtual COM pair
 Driver installation and physical COM-port behavior depend on the runner and
 hardware respectively.
 
+The Windows integration job also runs the native concurrency and buffer tests
+against that COM pair using pyserial for the test peer. To run them locally,
+install pyserial and set `TRACER_TEST_PORT_A` and `TRACER_TEST_PORT_B` to the two
+ends of an unused virtual COM pair before running
+`python -m pytest -v tests/test_native_concurrency.py`.
+
 ## VS Code clangd
 
 This project uses CMake `FetchContent` for `IntegralCommunication`. Configure
