@@ -28,6 +28,7 @@ FetchContent_Declare(
 set(INTEGRALCOMM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(IntegralCommunication)
 
+set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(Tracer MODULE
@@ -35,6 +36,7 @@ pybind11_add_module(Tracer MODULE
     src/tracer.cpp
     src/usb_communication.cpp
 )
+target_compile_definitions(Tracer PRIVATE $<$<PLATFORM_ID:Windows>:NOMINMAX>)
 target_link_libraries(Tracer PRIVATE
     IntegralCommunication::IntegralCommunication
 )
