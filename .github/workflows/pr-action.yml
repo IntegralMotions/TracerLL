@@ -6,6 +6,9 @@ on:
       - main
 
 jobs:
+  serial-integration:
+    uses: ./.github/workflows/serial-integration.yml
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
