@@ -62,10 +62,24 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $archive = Join-Path $env:RUNNER_TEMP 'com0com.zip'
-          $url = 'https://downloads.sourceforge.net/project/com0com/com0com/3.0.0.0/com0com-3.0.0.0-i386-and-x64-signed.zip'
-          Invoke-WebRequest -Uri $url -OutFile $archive
           $expected = '6e5d4359865277430d4ae88c73fb7e648a0ed8e81aea5002478179cfcb0bb0e1'
-          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne $expected) { throw 'Unexpected com0com archive hash' }
+          $path = 'project/com0com/com0com/3.0.0.0/com0com-3.0.0.0-i386-and-x64-signed.zip'
+          $urls = @("https://netix.dl.sourceforge.net/$path", "https://downloads.sourceforge.net/$path")
+          $verified = $false
+          foreach ($url in $urls) {
+            Write-Host "Downloading com0com from $url"
+            Remove-Item $archive -Force -ErrorAction SilentlyContinue
+            & curl.exe --fail --location --retry 2 --connect-timeout 20 --max-time 120 --output $archive $url
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $archive)) {
+              Write-Warning "Download failed with exit code $LASTEXITCODE"
+              continue
+            }
+            $actual = (Get-FileHash $archive -Algorithm SHA256).Hash
+            $size = (Get-Item $archive).Length
+            if ($actual -eq $expected) { $verified = $true; break }
+            Write-Warning "Discarding unexpected response: $size bytes, SHA-256 $actual"
+          }
+          if (-not $verified) { throw 'Could not download the verified com0com archive from any configured mirror' }
           $dir = Join-Path $env:RUNNER_TEMP 'com0com'
           Expand-Archive $archive -DestinationPath $dir
           $installer = Join-Path $dir 'Setup_com0com_v3.0.0.0_W7_x64_signed.exe'
