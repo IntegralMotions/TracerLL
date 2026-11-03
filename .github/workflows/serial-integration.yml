@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: IntegralMotions/IntegralEmbeddedTracing
-          ref: main
+          ref: feature/add-integration-test-code
           token: ${{ secrets.DEPENDENCY_TOKEN }}
           persist-credentials: false
           path: embedded-tracing

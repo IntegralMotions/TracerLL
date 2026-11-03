@@ -81,7 +81,7 @@ normal test runs unless `TRACER_SERIAL_TEST=1` is set.
 
 CI runs the normal test suite and a separate virtual-serial integration job on
 macOS, Linux, and Windows. The integration job checks out
-`IntegralMotions/IntegralEmbeddedTracing` at `main` and builds its example;
+`IntegralMotions/IntegralEmbeddedTracing` at `feature/add-integration-test-code` and builds its example;
 that branch must include the serial example and Windows COM-port support. On
 Windows it installs a checksum-pinned com0com driver and uses a virtual COM pair.
 Driver installation and physical COM-port behavior depend on the runner and
