@@ -57,6 +57,7 @@ jobs:
           cmake --build embedded-build --config Release --target TracingSerialDevice --parallel
 
       - name: Install and configure com0com
+        id: com0com
         if: runner.os == 'Windows'
         timeout-minutes: 6
         shell: pwsh
@@ -97,14 +98,27 @@ jobs:
           Write-Host 'com0com installer completed'
           $setup = Get-ChildItem "${env:ProgramFiles(x86)}\com0com", "$env:ProgramFiles\com0com" -Filter setupc.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $setup) { throw 'com0com setupc.exe not found after installation' }
+          $logDir = Join-Path $env:RUNNER_TEMP 'com0com-diagnostics'
+          New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+          Write-Host "Using setupc in $($setup.DirectoryName)"
+          if (-not (Test-Path (Join-Path $setup.DirectoryName 'com0com.inf'))) {
+            throw 'com0com.inf is missing from the setupc directory'
+          }
           function Invoke-Setup([string[]] $Arguments) {
+            $log = Join-Path $logDir "setupc-$($Arguments[0]).log"
+            $options = @('--silent', '--wait', '30', '--output', "`"$log`"")
             Write-Host "Running setupc $($Arguments -join ' ') (timeout: 60 seconds)"
-            $proc = Start-Process -FilePath $setup.FullName -ArgumentList $Arguments -NoNewWindow -PassThru
-            if (-not $proc.WaitForExit(60000)) {
-              & taskkill.exe /PID $proc.Id /T /F
-              throw "com0com setupc timed out: $($Arguments -join ' ')"
+            # setupc resolves the INF filenames relative to its current directory.
+            $proc = Start-Process -FilePath $setup.FullName -WorkingDirectory $setup.DirectoryName -ArgumentList ($options + $Arguments) -NoNewWindow -PassThru
+            try {
+              if (-not $proc.WaitForExit(60000)) {
+                & taskkill.exe /PID $proc.Id /T /F
+                throw "com0com setupc timed out: $($Arguments -join ' ')"
+              }
+              if ($proc.ExitCode -ne 0) { throw "com0com setupc failed with exit code $($proc.ExitCode)" }
+            } finally {
+              if (Test-Path $log) { Get-Content $log }
             }
-            if ($proc.ExitCode -ne 0) { throw "com0com setupc failed with exit code $($proc.ExitCode)" }
           }
           Invoke-Setup @('install', 'PortName=COM30', 'PortName=COM31')
           Invoke-Setup @('list')
@@ -116,6 +130,26 @@ jobs:
             Start-Sleep -Seconds 1
           }
           if (-not $ready) { throw 'COM30 and COM31 did not become available; check driver signature and installation' }
+
+      - name: Collect Windows driver diagnostics
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'com0com-diagnostics'
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          Copy-Item "$env:WINDIR\INF\setupapi.dev.log" $dir -ErrorAction Continue
+          Get-CimInstance Win32_PnPEntity |
+            Where-Object { $_.Name -match 'com0com|COM30|COM31' -or $_.PNPDeviceID -match 'com0com' } |
+            Format-List Name, Status, ConfigManagerErrorCode, PNPDeviceID |
+            Out-File (Join-Path $dir 'devices.txt')
+          Get-Content (Join-Path $dir 'devices.txt')
+
+      - name: Upload Windows driver diagnostics
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-com0com-diagnostics
+          path: ${{ runner.temp }}/com0com-diagnostics
 
       - name: Run serial integration (Linux and macOS)
         if: runner.os != 'Windows'
