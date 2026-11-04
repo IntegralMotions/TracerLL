@@ -10,10 +10,11 @@ from TracerLL.TraceProtocol import checked_message, packet, parse_config
 
 
 class FakeTransport:
-    def __init__(self, port, baud, receive_queue_capacity=1024):
+    def __init__(self, port, baud, receive_queue_capacity=1024, idle_read_delay_us=100):
         self.sent = []
         self.messages = []
         self.open = False
+        self.idle_read_delay_us = idle_read_delay_us
 
     def start(self):
         self.open = True
@@ -66,6 +67,34 @@ def test_rejects_invalid_crc_and_truncated_config():
         checked_message(b"\x01\x00\x00")
     with pytest.raises(ValueError):
         parse_config(b"\x02\x01\x00")
+
+
+def test_reader_drains_consecutive_batches_before_sleeping(monkeypatch):
+    monkeypatch.setattr(embedded_tracer, "NativeTracer", FakeTransport)
+    tracer = embedded_tracer.EmbeddedTracer("test", 115200)
+    tracer._mapping = {0: ("counter", 4)}
+    received = []
+    tracer._callbacks["counter"] = received.append
+    batches = iter([[packet(b"\x07\x01\x00\x01")], [packet(b"\x07\x01\x00\x02")], []])
+    monkeypatch.setattr(tracer.embedded_tracer, "get_messages", lambda: next(batches))
+    waits = []
+
+    def idle_sleep(delay):
+        assert received == [1, 2], "Reader slept with another batch still available"
+        waits.append(delay)
+        tracer._running.clear()
+
+    monkeypatch.setattr(embedded_tracer.time, "sleep", idle_sleep)
+    tracer._running.set()
+    tracer._read_loop()
+    assert waits == [0.001]
+
+
+@pytest.mark.parametrize("delay", [0, 25, 100, 1000, 1000000])
+def test_forwards_idle_read_delay(monkeypatch, delay):
+    monkeypatch.setattr(embedded_tracer, "NativeTracer", FakeTransport)
+    tracer = embedded_tracer.EmbeddedTracer("test", 115200, idle_read_delay_us=delay)
+    assert tracer.embedded_tracer.idle_read_delay_us == delay
 
 
 def test_selects_only_requested_variables(monkeypatch):

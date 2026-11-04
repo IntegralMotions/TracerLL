@@ -10,9 +10,12 @@ PYBIND11_MODULE(Tracer, m) {
 
         A class that manages serial communication and COBS message framing.
         )pbdoc")
-        .def(py::init([](std::string port, uint32_t baud, size_t capacity) {
-                 return std::make_unique<Tracer>(port, baud, capacity);
-             }), py::arg("port"), py::arg("baud"), py::arg("receive_queue_capacity") = 1024)
+        .def(py::init([](std::string port, uint32_t baud, size_t capacity, int64_t idleReadDelayUs) {
+                 return std::make_unique<Tracer>(port, baud, capacity, idleReadDelayUs);
+             }), py::arg("port"), py::arg("baud"), py::arg("receive_queue_capacity") = 1024,
+             py::arg("idle_read_delay_us") = 100)
+        .def_property_readonly("idle_read_delay_us", &Tracer::idleReadDelayUs,
+                               "Idle read delay in microseconds; zero enables busy polling.")
         .def("start", &Tracer::start, R"pbdoc(
             start() -> boolean
 
