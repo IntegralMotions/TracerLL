@@ -26,8 +26,8 @@ class EmbeddedTracer:
     deliberately kept separate from this protocol layer.
     """
 
-    def __init__(self, port, baudrate, receive_queue_capacity=1024):
-        self.embedded_tracer = NativeTracer(port, baudrate, receive_queue_capacity)
+    def __init__(self, port, baudrate, receive_queue_capacity=1024, idle_read_delay_us=100):
+        self.embedded_tracer = NativeTracer(port, baudrate, receive_queue_capacity, idle_read_delay_us)
         self.values = TraceValues()
         self._callbacks = {}
         self._callback_lock = threading.Lock()
@@ -184,7 +184,9 @@ class EmbeddedTracer:
                         _LOG.warning("Unexpected trace message type: %s", message[0])
                 except (ValueError, UnicodeError):
                     _LOG.exception("Invalid trace message")
-            time.sleep(0.001)
+            # Drain consecutive batches immediately; back off only when idle.
+            if not messages:
+                time.sleep(0.001)
 
     def subscribe(self, name, callback):
         if self.values.get_id_from_name(name) is None:

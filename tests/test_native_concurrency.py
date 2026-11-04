@@ -198,3 +198,38 @@ def test_oversized_unterminated_frame_recovers_at_next_delimiter():
             assert messages == [[0x11], [0x2A]]
         finally:
             tracer.stop()
+
+
+@pytest.mark.parametrize("delay", [0, 25, 1000])
+def test_receive_with_configured_idle_delay(delay):
+    from TracerLL import Tracer
+
+    with open_serial_pair() as (port, peer):
+        tracer = Tracer.Tracer(port, 115200, idle_read_delay_us=delay)
+        try:
+            assert tracer.start()
+            time.sleep(0.02)
+            assert peer.write(b"\x02\x2a\x00") == 3
+            deadline = time.monotonic() + 2
+            messages = []
+            while not messages and time.monotonic() < deadline:
+                messages.extend(tracer.get_messages())
+                time.sleep(0.001)
+            assert messages == [[42]]
+        finally:
+            tracer.stop()
+
+
+def test_stop_interrupts_long_idle_delay():
+    from TracerLL import Tracer
+
+    with open_serial_pair() as (port, _):
+        tracer = Tracer.Tracer(port, 115200, idle_read_delay_us=1000000)
+        try:
+            assert tracer.start()
+            time.sleep(0.02)
+            started = time.monotonic()
+            tracer.stop()
+            assert time.monotonic() - started < 0.5, "Shutdown waited for the one-second idle delay"
+        finally:
+            tracer.stop()

@@ -129,7 +129,7 @@ The package version is defined in one place:
 
 ```toml
 [project]
-version = "0.4.0"
+version = "0.4.1"
 ```
 
 Update the `version` field in `pyproject.toml` when preparing a release.
@@ -199,6 +199,30 @@ The receive queue holds up to 1024 messages by default. Set the optional
 are dropped when full; `dropped_messages()` returns a cumulative, saturating
 count. The count survives stop/start, while queued messages are cleared on start.
 `EmbeddedTracer.dropped_messages()` exposes the same count.
+
+The native reader drains serial input in chunks of up to 64 KiB and briefly
+backs off when idle, rather than sleeping 5 ms between bursts. This reduces
+backpressure at high sample rates; actual throughput still depends on the
+transport and Python callback workload.
+
+Configure that idle wait in either client constructor using `idle_read_delay_us`:
+
+```python
+tracer = EmbeddedTracer("/dev/ttyUSB0", 115200, idle_read_delay_us=25)
+# Or the native transport:
+transport = Tracer.Tracer("/dev/ttyUSB0", 115200, idle_read_delay_us=1000)
+```
+
+The default is **100 microseconds**. Lower values can reduce idle-to-read latency
+but consume more CPU; `1000` waits one millisecond to favor lower CPU usage.
+`0` enables busy polling and can consume an entire CPU core even without data.
+Accepted values are integers from 0 to 1,000,000 microseconds. The wait applies
+only when the native reader finds no data; it never delays between queued
+samples. The Python callback loop separately waits 1 ms when it has no messages,
+but drains consecutive nonempty batches without sleeping.
+OS scheduling determines the actual wake-up time. `stop()` wakes the idle reader
+immediately rather than waiting for this interval to expire. To change the
+setting, construct a new tracer.
 
 `write_message()` returns `True` only when the complete encoded frame is accepted
 by the serial transport. A failure may leave a partial frame on the wire, so

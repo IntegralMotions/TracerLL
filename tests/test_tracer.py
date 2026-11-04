@@ -50,6 +50,22 @@ def test_write_fails_when_closed_and_zero_queue_rejected():
         Tracer.Tracer("COM_FAKE", 9600, 0)
 
 
+@pytest.mark.parametrize("delay", [0, 25, 100, 1000, 1000000])
+def test_configurable_idle_read_delay(delay):
+    tracer = Tracer.Tracer("COM_FAKE", 9600, idle_read_delay_us=delay)
+    assert tracer.idle_read_delay_us == delay
+
+
+def test_default_idle_read_delay():
+    assert Tracer.Tracer("COM_FAKE", 9600).idle_read_delay_us == 100
+
+
+@pytest.mark.parametrize("delay", [-1, 1000001])
+def test_invalid_idle_read_delay(delay):
+    with pytest.raises(ValueError, match="idle_read_delay_us"):
+        Tracer.Tracer("COM_FAKE", 9600, idle_read_delay_us=delay)
+
+
 @pytest.mark.skipif(os.name != "posix", reason="/dev/null is a POSIX device")
 def test_non_serial_device_cannot_start():
     tracer = Tracer.Tracer("/dev/null", 115200)

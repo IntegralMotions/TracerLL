@@ -14,10 +14,14 @@ namespace {
     constexpr size_t CobsRxBufferSize = 4096;
 } // namespace
 
-Tracer::Tracer(std::string& port, uint32_t baud, size_t receiveQueueCapacity)
-    : _port(std::move(port)), _baud(baud), _receiveQueueCapacity(receiveQueueCapacity) {
+Tracer::Tracer(std::string& port, uint32_t baud, size_t receiveQueueCapacity, int64_t idleReadDelayUs)
+    : _port(std::move(port)), _baud(baud), _receiveQueueCapacity(receiveQueueCapacity),
+      _idleReadDelayUs(idleReadDelayUs) {
     if (receiveQueueCapacity == 0) {
         throw std::invalid_argument("receive queue capacity must be positive");
+    }
+    if (idleReadDelayUs < 0 || idleReadDelayUs > 1000000) {
+        throw std::invalid_argument("idle_read_delay_us must be between 0 and 1000000");
     }
 }
 
@@ -80,7 +84,11 @@ bool Tracer::start() {
 
 void Tracer::stop() {
     std::scoped_lock lock(_lifecycleMutex);
-    _running = false;
+    {
+        std::scoped_lock idleLock(_idleMutex);
+        _running = false;
+    }
+    _idleCondition.notify_all();
     if (_thread.joinable()) {
         _thread.join();
     }
@@ -94,15 +102,25 @@ void Tracer::readLoop() {
     // delimiter and subsequent frames can be received normally.
     std::array<uint8_t, CobsRxBufferSize> decoded{};
     std::array<uint8_t, CobsRxBufferSize - 1> encoded{};
-    std::array<uint8_t, 1024> incoming{};
+    std::array<uint8_t, 64 * 1024> incoming{};
     size_t encodedSize = 0;
     bool discarding = false;
 
     while (_running) {
+#ifdef _WIN32
         const size_t available = _usbCommunication->available();
         const size_t count = available == 0 ? 0 : _usbCommunication->read(incoming.data(), std::min(available, incoming.size()));
+#else
+        // The POSIX port is nonblocking: drain it directly, avoiding an ioctl
+        // per read and delays while the terminal's available-byte count updates.
+        const size_t count = _usbCommunication->read(incoming.data(), incoming.size());
+#endif
         if (count == 0) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            if (_idleReadDelayUs != 0) {
+                std::unique_lock idleLock(_idleMutex);
+                _idleCondition.wait_for(idleLock, std::chrono::microseconds(_idleReadDelayUs),
+                                        [this] { return !_running.load(); });
+            }
             continue;
         }
 
