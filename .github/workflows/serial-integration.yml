@@ -63,8 +63,10 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $archive = Join-Path $env:RUNNER_TEMP 'com0com.zip'
-          $expected = '6e5d4359865277430d4ae88c73fb7e648a0ed8e81aea5002478179cfcb0bb0e1'
-          $path = 'project/com0com/com0com/3.0.0.0/com0com-3.0.0.0-i386-and-x64-signed.zip'
+          # Fresh installs of signed com0com 3.0 have reported Windows 10/11 issues.
+          # https://docklight.de/dl_prb059/ recommends the signed 2.2.2 package.
+          $expected = '3bc7313e8577774ce78cff4d1c816faf96cfa48c485bbcc5527d4569f7d5e373'
+          $path = 'project/com0com/com0com/2.2.2.0/com0com-2.2.2.0-x64-fre-signed.zip'
           $urls = @("https://netix.dl.sourceforge.net/$path", "https://downloads.sourceforge.net/$path")
           $verified = $false
           foreach ($url in $urls) {
@@ -84,7 +86,7 @@ jobs:
           Write-Host "Verified com0com archive (SHA-256 $actual, $size bytes)"
           $dir = Join-Path $env:RUNNER_TEMP 'com0com'
           Expand-Archive $archive -DestinationPath $dir
-          $installer = Join-Path $dir 'Setup_com0com_v3.0.0.0_W7_x64_signed.exe'
+          $installer = Join-Path $dir 'com0com-2.2.2.0-x64-fre-signed\setup.exe'
           Write-Host 'Starting the silent com0com installer (timeout: 120 seconds)'
           $result = Start-Process $installer -ArgumentList '/S' -PassThru
           if (-not $result.WaitForExit(120000)) {
