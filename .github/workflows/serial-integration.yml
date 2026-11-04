@@ -104,6 +104,28 @@ jobs:
           if (-not (Test-Path (Join-Path $setup.DirectoryName 'com0com.inf'))) {
             throw 'com0com.inf is missing from the setupc directory'
           }
+          # setupapi.dev.log reported 0xe0000242 (untrusted publisher), which
+          # opens a confirmation dialog even when setupc itself is silent.
+          # Trust only this validated package's leaf signer, never a new root CA.
+          $catalog = Join-Path $setup.DirectoryName 'com0com.cat'
+          $signature = Get-AuthenticodeSignature -LiteralPath $catalog
+          $signature | Format-List Status, StatusMessage, SignerCertificate |
+            Out-String | Tee-Object -FilePath (Join-Path $logDir 'catalog-signature.txt') | Write-Host
+          if ($signature.Status -ne 'Valid' -or -not $signature.SignerCertificate) {
+            throw 'com0com catalog signature is not valid; refusing to change certificate trust'
+          }
+          $signer = $signature.SignerCertificate
+          if ($signer.Subject -notmatch '(^|,\s*)CN=Steven William Hatchett(,|$)') {
+            throw "Unexpected com0com publisher: $($signer.Subject)"
+          }
+          $publisherPath = "Cert:\LocalMachine\TrustedPublisher\$($signer.Thumbprint)"
+          if (-not (Test-Path $publisherPath)) {
+            Write-Host "Temporarily trusting com0com publisher $($signer.Subject), thumbprint $($signer.Thumbprint)"
+            $certFile = Join-Path $logDir 'com0com-publisher.cer'
+            Export-Certificate -Cert $signer -FilePath $certFile | Out-Null
+            "COM0COM_ADDED_PUBLISHER=$($signer.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            Import-Certificate -FilePath $certFile -CertStoreLocation 'Cert:\LocalMachine\TrustedPublisher' | Out-Null
+          }
           function Invoke-Setup([string[]] $Arguments) {
             $log = Join-Path $logDir "setupc-$($Arguments[0]).log"
             $options = @('--silent', '--wait', '30', '--output', "`"$log`"")
@@ -172,3 +194,11 @@ jobs:
           TRACER_TEST_PORT_A: COM30
           TRACER_TEST_PORT_B: COM31
         run: python -m pytest -v tests/test_native_concurrency.py
+
+      - name: Remove temporary com0com publisher trust
+        if: always() && runner.os == 'Windows' && env.COM0COM_ADDED_PUBLISHER != ''
+        shell: pwsh
+        run: |
+          $thumbprint = $env:COM0COM_ADDED_PUBLISHER
+          if ($thumbprint -notmatch '^[0-9A-Fa-f]{40}$') { throw 'Invalid publisher thumbprint for cleanup' }
+          Remove-Item "Cert:\LocalMachine\TrustedPublisher\$thumbprint" -ErrorAction Stop
