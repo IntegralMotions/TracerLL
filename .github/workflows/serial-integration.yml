@@ -58,6 +58,7 @@ jobs:
 
       - name: Install and configure com0com
         if: runner.os == 'Windows'
+        timeout-minutes: 6
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -80,17 +81,31 @@ jobs:
             Write-Warning "Discarding unexpected response: $size bytes, SHA-256 $actual"
           }
           if (-not $verified) { throw 'Could not download the verified com0com archive from any configured mirror' }
+          Write-Host "Verified com0com archive (SHA-256 $actual, $size bytes)"
           $dir = Join-Path $env:RUNNER_TEMP 'com0com'
           Expand-Archive $archive -DestinationPath $dir
           $installer = Join-Path $dir 'Setup_com0com_v3.0.0.0_W7_x64_signed.exe'
-          $result = Start-Process $installer -ArgumentList '/S' -Wait -PassThru
+          Write-Host 'Starting the silent com0com installer (timeout: 120 seconds)'
+          $result = Start-Process $installer -ArgumentList '/S' -PassThru
+          if (-not $result.WaitForExit(120000)) {
+            & taskkill.exe /PID $result.Id /T /F
+            throw 'com0com installer timed out. It may be waiting for driver installation or an interactive prompt.'
+          }
           if ($result.ExitCode -ne 0) { throw "com0com installer failed: $($result.ExitCode)" }
+          Write-Host 'com0com installer completed'
           $setup = Get-ChildItem "${env:ProgramFiles(x86)}\com0com", "$env:ProgramFiles\com0com" -Filter setupc.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
           if (-not $setup) { throw 'com0com setupc.exe not found after installation' }
-          & $setup.FullName install PortName=COM30 PortName=COM31
-          if ($LASTEXITCODE -ne 0) { throw "com0com port-pair creation failed: $LASTEXITCODE" }
-          & $setup.FullName list
-          if ($LASTEXITCODE -ne 0) { throw "com0com port listing failed: $LASTEXITCODE" }
+          function Invoke-Setup([string[]] $Arguments) {
+            Write-Host "Running setupc $($Arguments -join ' ') (timeout: 60 seconds)"
+            $proc = Start-Process -FilePath $setup.FullName -ArgumentList $Arguments -NoNewWindow -PassThru
+            if (-not $proc.WaitForExit(60000)) {
+              & taskkill.exe /PID $proc.Id /T /F
+              throw "com0com setupc timed out: $($Arguments -join ' ')"
+            }
+            if ($proc.ExitCode -ne 0) { throw "com0com setupc failed with exit code $($proc.ExitCode)" }
+          }
+          Invoke-Setup @('install', 'PortName=COM30', 'PortName=COM31')
+          Invoke-Setup @('list')
           $ready = $false
           for ($i = 0; $i -lt 30; $i++) {
             $entry = Get-ItemProperty 'HKLM:\HARDWARE\DEVICEMAP\SERIALCOMM' -ErrorAction SilentlyContinue
