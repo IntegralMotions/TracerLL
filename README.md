@@ -129,7 +129,7 @@ The package version is defined in one place:
 
 ```toml
 [project]
-version = "0.3.0"
+version = "0.4.0"
 ```
 
 Update the `version` field in `pyproject.toml` when preparing a release.
