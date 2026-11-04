@@ -10,7 +10,7 @@ the receive limit are discarded through the next delimiter to restore framing.
 
 ## Requirements
 
-- Python 3.12 or newer (CI tests Python 3.15)
+- Python 3.12 or newer (CI tests 3.12–3.15 on Linux, and 3.15 on macOS/Windows)
 - CMake 3.16 or newer
 - A C++20 compiler
 - Git, used by CMake `FetchContent` to fetch

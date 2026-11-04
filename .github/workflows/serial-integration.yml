@@ -2,6 +2,10 @@ name: Serial integration
 
 on:
   workflow_call:
+    secrets:
+      DEPENDENCY_TOKEN:
+        description: Read access to the private IntegralCoreUtilities repository
+        required: true
 
 permissions:
   contents: read
@@ -15,27 +19,30 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        working-directory: tracerll
     steps:
       - name: Check out TracerLL
         uses: actions/checkout@v4
         with:
           path: tracerll
 
-      # This ref must contain the example, including its Windows COM-port support.
       - name: Check out IntegralEmbeddedTracing
         uses: actions/checkout@v4
         with:
           repository: IntegralMotions/IntegralEmbeddedTracing
+          # Switch to main once the example branch is merged.
           ref: feature/add-integration-test-code
           token: ${{ secrets.DEPENDENCY_TOKEN }}
           persist-credentials: false
           path: embedded-tracing
 
-      # Match the CoreUtilities version pinned by IntegralCommunication v0.5.2.
       - name: Check out IntegralCoreUtilities
         uses: actions/checkout@v4
         with:
           repository: IntegralMotions/IntegralCoreUtilities
+          # Matches IntegralCommunication v0.5.2's dependency.
           ref: v0.3.1
           token: ${{ secrets.DEPENDENCY_TOKEN }}
           persist-credentials: false
@@ -44,12 +51,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.15"
+          cache: pip
+          cache-dependency-path: tracerll/pyproject.toml
 
-      - name: Install TracerLL and pytest
-        working-directory: tracerll
+      - name: Install package and test dependencies
         run: python -m pip install -e ".[test]"
 
       - name: Build trace device
+        working-directory: .
         shell: bash
         run: |
           cmake -S embedded-tracing -B embedded-build -DINTEGRAL_BUILD_TESTS=OFF -DINTEGRAL_BUILD_EXAMPLES=ON \
@@ -57,130 +66,17 @@ jobs:
           cmake --build embedded-build --config Release --target TracingSerialDevice --parallel
 
       - name: Install and configure com0com
-        id: com0com
         if: runner.os == 'Windows'
         timeout-minutes: 6
         shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $archive = Join-Path $env:RUNNER_TEMP 'com0com.zip'
-          # Fresh installs of signed com0com 3.0 have reported Windows 10/11 issues.
-          # https://docklight.de/dl_prb059/ recommends the signed 2.2.2 package.
-          $expected = '3bc7313e8577774ce78cff4d1c816faf96cfa48c485bbcc5527d4569f7d5e373'
-          $path = 'project/com0com/com0com/2.2.2.0/com0com-2.2.2.0-x64-fre-signed.zip'
-          $urls = @("https://netix.dl.sourceforge.net/$path", "https://downloads.sourceforge.net/$path")
-          $verified = $false
-          foreach ($url in $urls) {
-            Write-Host "Downloading com0com from $url"
-            Remove-Item $archive -Force -ErrorAction SilentlyContinue
-            & curl.exe --fail --location --retry 2 --connect-timeout 20 --max-time 120 --output $archive $url
-            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $archive)) {
-              Write-Warning "Download failed with exit code $LASTEXITCODE"
-              continue
-            }
-            $actual = (Get-FileHash $archive -Algorithm SHA256).Hash
-            $size = (Get-Item $archive).Length
-            if ($actual -eq $expected) { $verified = $true; break }
-            Write-Warning "Discarding unexpected response: $size bytes, SHA-256 $actual"
-          }
-          if (-not $verified) { throw 'Could not download the verified com0com archive from any configured mirror' }
-          Write-Host "Verified com0com archive (SHA-256 $actual, $size bytes)"
-          $dir = Join-Path $env:RUNNER_TEMP 'com0com'
-          Expand-Archive $archive -DestinationPath $dir
-          $installer = Join-Path $dir 'com0com-2.2.2.0-x64-fre-signed\setup.exe'
-          Write-Host 'Starting the silent com0com installer (timeout: 120 seconds)'
-          $result = Start-Process $installer -ArgumentList '/S' -PassThru
-          if (-not $result.WaitForExit(120000)) {
-            & taskkill.exe /PID $result.Id /T /F
-            throw 'com0com installer timed out. It may be waiting for driver installation or an interactive prompt.'
-          }
-          if ($result.ExitCode -ne 0) { throw "com0com installer failed: $($result.ExitCode)" }
-          Write-Host 'com0com installer completed'
-          $setup = Get-ChildItem "${env:ProgramFiles(x86)}\com0com", "$env:ProgramFiles\com0com" -Filter setupc.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $setup) { throw 'com0com setupc.exe not found after installation' }
-          $logDir = Join-Path $env:RUNNER_TEMP 'com0com-diagnostics'
-          New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-          Write-Host "Using setupc in $($setup.DirectoryName)"
-          if (-not (Test-Path (Join-Path $setup.DirectoryName 'com0com.inf'))) {
-            throw 'com0com.inf is missing from the setupc directory'
-          }
-          # setupapi.dev.log reported 0xe0000242 (untrusted publisher), which
-          # opens a confirmation dialog even when setupc itself is silent.
-          # Trust only this validated package's leaf signer, never a new root CA.
-          $catalog = Join-Path $setup.DirectoryName 'com0com.cat'
-          $signature = Get-AuthenticodeSignature -LiteralPath $catalog
-          $signature | Format-List Status, StatusMessage, SignerCertificate |
-            Out-String | Tee-Object -FilePath (Join-Path $logDir 'catalog-signature.txt') | Write-Host
-          if ($signature.Status -ne 'Valid' -or -not $signature.SignerCertificate) {
-            throw 'com0com catalog signature is not valid; refusing to change certificate trust'
-          }
-          $signer = $signature.SignerCertificate
-          if ($signer.Subject -notmatch '(^|,\s*)CN=Steven William Hatchett(,|$)') {
-            throw "Unexpected com0com publisher: $($signer.Subject)"
-          }
-          $publisherPath = "Cert:\LocalMachine\TrustedPublisher\$($signer.Thumbprint)"
-          if (-not (Test-Path $publisherPath)) {
-            Write-Host "Temporarily trusting com0com publisher $($signer.Subject), thumbprint $($signer.Thumbprint)"
-            $certFile = Join-Path $logDir 'com0com-publisher.cer'
-            Export-Certificate -Cert $signer -FilePath $certFile | Out-Null
-            "COM0COM_ADDED_PUBLISHER=$($signer.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            Import-Certificate -FilePath $certFile -CertStoreLocation 'Cert:\LocalMachine\TrustedPublisher' | Out-Null
-          }
-          function Invoke-Setup([string[]] $Arguments) {
-            $log = Join-Path $logDir "setupc-$($Arguments[0]).log"
-            $options = @('--silent', '--wait', '30', '--output', "`"$log`"")
-            Write-Host "Running setupc $($Arguments -join ' ') (timeout: 60 seconds)"
-            # setupc resolves the INF filenames relative to its current directory.
-            $proc = Start-Process -FilePath $setup.FullName -WorkingDirectory $setup.DirectoryName -ArgumentList ($options + $Arguments) -NoNewWindow -PassThru
-            try {
-              if (-not $proc.WaitForExit(60000)) {
-                & taskkill.exe /PID $proc.Id /T /F
-                throw "com0com setupc timed out: $($Arguments -join ' ')"
-              }
-              if ($proc.ExitCode -ne 0) { throw "com0com setupc failed with exit code $($proc.ExitCode)" }
-            } finally {
-              if (Test-Path $log) { Get-Content $log }
-            }
-          }
-          Invoke-Setup @('install', 'PortName=COM30', 'PortName=COM31')
-          Invoke-Setup @('list')
-          $ready = $false
-          for ($i = 0; $i -lt 30; $i++) {
-            $entry = Get-ItemProperty 'HKLM:\HARDWARE\DEVICEMAP\SERIALCOMM' -ErrorAction SilentlyContinue
-            $ports = if ($entry) { @($entry.PSObject.Properties | ForEach-Object { $_.Value }) } else { @() }
-            if ($ports -contains 'COM30' -and $ports -contains 'COM31') { $ready = $true; break }
-            Start-Sleep -Seconds 1
-          }
-          if (-not $ready) { throw 'COM30 and COM31 did not become available; check driver signature and installation' }
-
-      - name: Collect Windows driver diagnostics
-        if: failure() && runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          $dir = Join-Path $env:RUNNER_TEMP 'com0com-diagnostics'
-          New-Item -ItemType Directory -Path $dir -Force | Out-Null
-          Copy-Item "$env:WINDIR\INF\setupapi.dev.log" $dir -ErrorAction Continue
-          Get-CimInstance Win32_PnPEntity |
-            Where-Object { $_.Name -match 'com0com|COM30|COM31' -or $_.PNPDeviceID -match 'com0com' } |
-            Format-List Name, Status, ConfigManagerErrorCode, PNPDeviceID |
-            Out-File (Join-Path $dir 'devices.txt')
-          Get-Content (Join-Path $dir 'devices.txt')
-
-      - name: Upload Windows driver diagnostics
-        if: failure() && runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-com0com-diagnostics
-          path: ${{ runner.temp }}/com0com-diagnostics
+        run: ./.github/scripts/com0com.ps1 -Action Install
 
       - name: Run serial integration (Linux and macOS)
         if: runner.os != 'Windows'
-        working-directory: tracerll
         run: python tests/integration/run_virtual_device.py ../embedded-build/TracingSerialDevice
 
       - name: Run serial integration (Windows)
         if: runner.os == 'Windows'
-        working-directory: tracerll
         run: python tests/integration/run_virtual_device.py ../embedded-build/Release/TracingSerialDevice.exe --device-port COM30 --host-port COM31
 
       - name: Install Windows serial test dependency
@@ -189,7 +85,6 @@ jobs:
 
       - name: Run native transport tests (Windows COM pair)
         if: runner.os == 'Windows'
-        working-directory: tracerll
         env:
           TRACER_TEST_PORT_A: COM30
           TRACER_TEST_PORT_B: COM31
@@ -198,7 +93,16 @@ jobs:
       - name: Remove temporary com0com publisher trust
         if: always() && runner.os == 'Windows' && env.COM0COM_ADDED_PUBLISHER != ''
         shell: pwsh
-        run: |
-          $thumbprint = $env:COM0COM_ADDED_PUBLISHER
-          if ($thumbprint -notmatch '^[0-9A-Fa-f]{40}$') { throw 'Invalid publisher thumbprint for cleanup' }
-          Remove-Item "Cert:\LocalMachine\TrustedPublisher\$thumbprint" -ErrorAction Stop
+        run: ./.github/scripts/com0com.ps1 -Action Cleanup
+
+      - name: Collect Windows driver diagnostics
+        if: failure() && runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/scripts/com0com.ps1 -Action Diagnostics
+
+      - name: Upload Windows driver diagnostics
+        if: failure() && runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-com0com-diagnostics
+          path: ${{ runner.temp }}/com0com-diagnostics
